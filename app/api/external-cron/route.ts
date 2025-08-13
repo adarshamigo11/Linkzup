@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "../auth/[...nextauth]/auth"
 import connectDB from "@/lib/mongodb"
 import ScheduledPost from "@/models/ScheduledPost"
 import User from "@/models/User"
@@ -79,13 +77,15 @@ async function postToLinkedIn(scheduledPost: any, user: any) {
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.email) {
+    // Simple authentication for external cron services
+    const url = new URL(req.url)
+    const token = url.searchParams.get('token')
+    
+    if (token !== process.env.EXTERNAL_CRON_TOKEN) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("🔄 Manual cron job trigger started at", ISTTime.getCurrentISTString())
+    console.log("🔄 External cron job trigger started at", ISTTime.getCurrentISTString())
 
     await connectDB()
 
@@ -226,7 +226,7 @@ export async function GET(req: Request) {
       }
     }
 
-    console.log(`✅ Manual cron job completed: ${successCount} successful, ${failureCount} failed`)
+    console.log(`✅ External cron job completed: ${successCount} successful, ${failureCount} failed`)
 
     return NextResponse.json({
       success: true,
@@ -238,8 +238,7 @@ export async function GET(req: Request) {
       currentTime: ISTTime.getCurrentISTString(),
     })
   } catch (error: any) {
-    console.error("❌ Manual cron job error:", error)
-    return NextResponse.json({ error: error.message || "Manual cron job failed" }, { status: 500 })
+    console.error("❌ External cron job error:", error)
+    return NextResponse.json({ error: error.message || "External cron job failed" }, { status: 500 })
   }
 }
-

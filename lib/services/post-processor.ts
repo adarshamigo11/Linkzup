@@ -1,5 +1,3 @@
-import type { CronLogger } from "@/lib/utils/cron-logger"
-
 export interface ProcessedContent {
   valid: boolean
   content?: string
@@ -8,10 +6,8 @@ export interface ProcessedContent {
 }
 
 export class PostProcessor {
-  private logger: CronLogger
-
-  constructor(logger: CronLogger) {
-    this.logger = logger
+  constructor() {
+    // No logger dependency needed
   }
 
   processContent(post: any): ProcessedContent {
@@ -30,7 +26,7 @@ export class PostProcessor {
 
     // Validate content length (LinkedIn has limits)
     if (content.length > 3000) {
-      this.logger.warn("Content exceeds LinkedIn character limit", {
+      console.warn("Content exceeds LinkedIn character limit", {
         length: content.length,
         postId: post._id,
       })
@@ -44,7 +40,7 @@ export class PostProcessor {
     // Clean and format content
     const cleanedContent = this.cleanContent(content)
 
-    this.logger.info("Content processed successfully", {
+    console.log("Content processed successfully", {
       originalLength: content.length,
       cleanedLength: cleanedContent.length,
       hasImage: !!imageUrl,

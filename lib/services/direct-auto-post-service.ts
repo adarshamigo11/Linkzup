@@ -24,10 +24,10 @@ export class DirectAutoPostService {
     await this.connectDB();
     
     const now = new Date();
-    console.log(`🔍 Looking for scheduled posts at: ${ISTTime.format(now)}`);
+    console.log(`🔍 Looking for scheduled posts at: ${ISTTime.formatIST(now)}`);
     
     // Get the approvedcontents collection directly
-    const collection = mongoose.connection.db.collection("approvedcontents");
+    const collection = mongoose.connection.db!.collection("approvedcontents");
     
     const scheduledPosts = await collection.find({
       status: "scheduled",
@@ -88,10 +88,10 @@ export class DirectAutoPostService {
         body: JSON.stringify(linkedinPayload)
       });
 
-      const result = await response.json();
+      const result = await response.json() as any;
       console.log(`📥 LinkedIn Response:`, JSON.stringify(result, null, 2));
 
-      if (response.ok && result.id) {
+      if (response.ok && result?.id) {
         console.log(`✅ Successfully posted to LinkedIn: ${result.id}`);
         return { success: true, postId: result.id };
       } else {
@@ -113,7 +113,7 @@ export class DirectAutoPostService {
 
   private static async updatePostStatus(postId: string, status: string, linkedinPostId?: string, error?: string) {
     try {
-      const collection = mongoose.connection.db.collection("approvedcontents");
+      const collection = mongoose.connection.db!.collection("approvedcontents");
       
       const updateData: any = {
         status: status,
@@ -149,7 +149,7 @@ export class DirectAutoPostService {
 
       for (const post of scheduledPosts) {
         console.log(`\n📝 Processing post: ${post.topicTitle}`);
-        console.log(`⏰ Scheduled for: ${ISTTime.format(post.scheduledTime)}`);
+        console.log(`⏰ Scheduled for: ${ISTTime.formatIST(post.scheduledTime)}`);
         
         const result = await this.postToLinkedIn(post);
         
@@ -185,13 +185,13 @@ export class DirectAutoPostService {
     currentTime: string;
     scheduledPosts: number;
     nextScheduledPost: { title: string; scheduledTime: string } | null;
-    cronActive: boolean;
+    autoPostActive: boolean;
   }> {
     try {
       await this.connectDB();
       
       const now = new Date();
-      const collection = mongoose.connection.db.collection("approvedcontents");
+      const collection = mongoose.connection.db!.collection("approvedcontents");
       
       // Count scheduled posts
       const scheduledCount = await collection.countDocuments({ status: "scheduled" });
@@ -203,22 +203,22 @@ export class DirectAutoPostService {
       );
 
       return {
-        currentTime: ISTTime.format(now),
+        currentTime: ISTTime.formatIST(now),
         scheduledPosts: scheduledCount,
         nextScheduledPost: nextPost ? {
           title: nextPost.topicTitle || "Untitled",
-          scheduledTime: ISTTime.format(new Date(nextPost.scheduledTime))
+                      scheduledTime: ISTTime.formatIST(new Date(nextPost.scheduledTime))
         } : null,
-        cronActive: true
+        autoPostActive: true
       };
 
     } catch (error) {
       console.error('❌ Error getting status:', error);
       return {
-        currentTime: ISTTime.format(new Date()),
+        currentTime: ISTTime.formatIST(new Date()),
         scheduledPosts: 0,
         nextScheduledPost: null,
-        cronActive: false
+        autoPostActive: false
       };
     }
   }

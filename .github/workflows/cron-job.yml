@@ -1,0 +1,38 @@
+name: LinkedIn Auto Post Cron Job
+
+on:
+  schedule:
+    # Run every minute
+    - cron: '* * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  cron-job:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run cron job
+      env:
+        MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+        LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+        LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+        CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      run: |
+        # Trigger the auto-post endpoint
+        curl -X GET "${{ secrets.VERCEL_URL }}/api/cron/auto-post" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          -H "Content-Type: application/json" \
+          -w "\nStatus: %{http_code}\nTime: %{time_total}s\n"

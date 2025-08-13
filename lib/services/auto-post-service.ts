@@ -53,7 +53,7 @@ export class AutoPostService {
         try {
           const scheduledTime = new Date(post.scheduledTime)
 
-          if (ISTTime.isTimeToPost(scheduledTime)) {
+          if (ISTTime.isInPast(scheduledTime)) {
             console.log(`⏰ Time to post: ${post.topicTitle}`)
 
             // Post to LinkedIn
@@ -95,7 +95,7 @@ export class AutoPostService {
   }
 
   async processScheduledPosts(): Promise<AutoPostResult> {
-    const currentTime = ISTTime.now()
+    const currentTime = ISTTime.getCurrentIST()
     const collections = ["approvedcontents", "generatedcontents"]
 
     let totalProcessed = 0
@@ -104,7 +104,7 @@ export class AutoPostService {
     const results: AutoPostResult["results"] = []
     const scheduledPosts: AutoPostResult["scheduledPosts"] = []
 
-    console.log(`🕐 Current IST Time: ${ISTTime.format(currentTime)}`)
+    console.log(`🕐 Current IST Time: ${ISTTime.formatIST(currentTime)}`)
 
     for (const collectionName of collections) {
       try {
@@ -126,7 +126,7 @@ export class AutoPostService {
             scheduledPosts.push({
               id: post._id.toString(),
               title: post.topicTitle || "Untitled",
-              scheduledFor: ISTTime.format(new Date(scheduledTime)),
+              scheduledFor: ISTTime.formatIST(new Date(scheduledTime)),
               status: post.status || post.Status,
             })
           }
@@ -137,10 +137,10 @@ export class AutoPostService {
           const scheduledTime = post.scheduledFor || post.scheduled_for || post.scheduledTime
           if (!scheduledTime) return false
 
-          const isTimeToPost = ISTTime.isTimeToPost(new Date(scheduledTime))
+          const isTimeToPost = ISTTime.isInPast(new Date(scheduledTime))
 
           if (isTimeToPost) {
-            console.log(`⏰ Post ${post._id} is due: ${ISTTime.format(new Date(scheduledTime))}`)
+            console.log(`⏰ Post ${post._id} is due: ${ISTTime.formatIST(new Date(scheduledTime))}`)
           }
 
           return isTimeToPost
@@ -203,7 +203,7 @@ export class AutoPostService {
       totalProcessed,
       totalPosted,
       totalFailed,
-      currentTime: ISTTime.format(currentTime),
+      currentTime: ISTTime.formatIST(currentTime),
       scheduledPosts,
       results,
     }
@@ -317,12 +317,12 @@ export class AutoPostService {
             $set: {
               status: "posted",
               Status: "posted",
-              postedAt: ISTTime.now(),
-              posted_at: ISTTime.now(),
+                      postedAt: new Date(),
+        posted_at: new Date(),
               linkedinPostId: linkedinData.id,
               linkedinUrl: linkedinUrl,
-              updatedAt: ISTTime.now(),
-              updated_at: ISTTime.now(),
+              updatedAt: new Date(),
+              updated_at: new Date(),
             },
             $unset: {
               scheduledFor: 1,
@@ -376,13 +376,13 @@ export class AutoPostService {
     const updateData: any = {
       status: status,
       Status: status,
-      updatedAt: ISTTime.now(),
-      updated_at: ISTTime.now(),
+      updatedAt: new Date(),
+      updated_at: new Date(),
     }
 
     if (error) {
       updateData.error = error
-      updateData.lastAttempt = ISTTime.now()
+      updateData.lastAttempt = new Date()
     }
 
     if (status === "failed") {

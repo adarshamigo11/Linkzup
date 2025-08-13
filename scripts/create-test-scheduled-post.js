@@ -78,7 +78,7 @@ async function createTestScheduledPost() {
 
     console.log('\n📋 Next steps:');
     console.log('1. Visit: http://localhost:3000/api/test-cron');
-    console.log('2. Check the terminal for cron job execution logs');
+    console.log('2. Check the terminal for auto-post execution logs');
     console.log('3. Check your LinkedIn profile for the test post');
 
   } catch (error) {

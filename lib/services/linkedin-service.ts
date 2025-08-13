@@ -1,5 +1,3 @@
-import type { CronLogger } from "@/lib/utils/cron-logger"
-
 export interface LinkedInPostResult {
   success: boolean
   postId?: string
@@ -8,10 +6,8 @@ export interface LinkedInPostResult {
 }
 
 export class LinkedInService {
-  private logger: CronLogger
-
-  constructor(logger: CronLogger) {
-    this.logger = logger
+  constructor() {
+    // No logger dependency needed
   }
 
   async postToLinkedIn(
@@ -25,7 +21,7 @@ export class LinkedInService {
     }
 
     try {
-      this.logger.info("Posting to LinkedIn", {
+      console.log("Posting to LinkedIn", {
         contentLength: content.length,
         hasImage: !!imageUrl,
         personId: linkedinPersonId,
@@ -67,9 +63,9 @@ export class LinkedInService {
             },
           ]
 
-          this.logger.info("Image prepared for LinkedIn post")
+          console.log("Image prepared for LinkedIn post")
         } catch (imageError) {
-          this.logger.warn("Failed to upload image, posting without image", { error: imageError })
+          console.warn("Failed to upload image, posting without image", { error: imageError })
           // Continue with text-only post
         }
       }
@@ -89,7 +85,7 @@ export class LinkedInService {
         const data = await response.json()
         const linkedinUrl = `https://www.linkedin.com/feed/update/${data.id}/`
 
-        this.logger.info("Successfully posted to LinkedIn", { postId: data.id })
+        console.log("Successfully posted to LinkedIn", { postId: data.id })
 
         return {
           success: true,
@@ -98,7 +94,7 @@ export class LinkedInService {
         }
       } else {
         const errorText = await response.text()
-        this.logger.error("LinkedIn API error", { status: response.status, error: errorText })
+        console.error("LinkedIn API error", { status: response.status, error: errorText })
 
         return {
           success: false,
@@ -107,7 +103,7 @@ export class LinkedInService {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      this.logger.error("Error posting to LinkedIn", { error: errorMessage })
+              console.error("Error posting to LinkedIn", { error: errorMessage })
 
       return {
         success: false,
@@ -117,7 +113,7 @@ export class LinkedInService {
   }
 
   private async uploadImageToLinkedIn(imageUrl: string, accessToken: string, linkedinPersonId: string) {
-    this.logger.info("Uploading image to LinkedIn", { imageUrl })
+            console.log("Uploading image to LinkedIn", { imageUrl })
 
     // Step 1: Register the image upload
     const registerUploadUrl = "https://api.linkedin.com/v2/assets?action=registerUpload"
@@ -182,7 +178,7 @@ export class LinkedInService {
       throw new Error(`Failed to upload image: ${uploadResponse.status} ${errorText}`)
     }
 
-    this.logger.info("Image uploaded successfully to LinkedIn")
+            console.log("Image uploaded successfully to LinkedIn")
     return registerData.value.asset
   }
 }

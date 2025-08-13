@@ -69,6 +69,7 @@
     "openai": "latest",
     "os": "latest",
     "path": "latest",
+    "razorpay": "^2.9.6",
     "react": "^18",
     "react-day-picker": "latest",
     "react-dom": "^18",

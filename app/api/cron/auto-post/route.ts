@@ -277,7 +277,7 @@ export async function GET(req: Request) {
         })
 
         // Post to LinkedIn with retry logic for rate limiting
-        let postResult
+        let postResult: any = null
         let retryCount = 0
         const maxRetries = 3
         
@@ -318,10 +318,10 @@ export async function GET(req: Request) {
           // Update scheduled post as failed
           await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
             status: "failed",
-            error: postResult.error,
+            error: postResult?.error || "Failed to post after all retry attempts",
           })
 
-          console.error(`❌ Failed to post scheduled content ${scheduledPost._id}:`, postResult.error)
+          console.error(`❌ Failed to post scheduled content ${scheduledPost._id}:`, postResult?.error || "Unknown error")
           failureCount++
         }
       } catch (error: any) {
