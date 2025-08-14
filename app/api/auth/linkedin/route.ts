@@ -16,7 +16,8 @@ export async function GET() {
     // Dynamic redirect URI based on environment
     let redirectUri = process.env.LINKEDIN_REDIRECT_URI
     if (!redirectUri) {
-      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+      // Use production URL for Vercel deployment
+      const baseUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
       redirectUri = `${baseUrl}/api/auth/linkedin/callback`
     }
 
@@ -29,6 +30,7 @@ export async function GET() {
       clientId: clientId.substring(0, 8) + "...",
       redirectUri,
       environment: process.env.NODE_ENV,
+      nextAuthUrl: process.env.NEXTAUTH_URL,
     })
 
     // Generate state parameter for security

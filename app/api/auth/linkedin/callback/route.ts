@@ -18,12 +18,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("❌ LinkedIn OAuth error:", error, errorDescription)
       const errorParam = error === "user_cancelled_login" ? "user_cancelled" : "linkedin_auth_failed"
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=${errorParam}`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=${errorParam}`)
     }
 
     if (!code || !state) {
       console.error("❌ Missing required parameters:", { code: !!code, state: !!state })
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=missing_params`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=missing_params`)
     }
 
     // Verify state parameter
@@ -33,14 +35,16 @@ export async function GET(request: NextRequest) {
       console.log("✅ State verified:", { userId: stateData.userId })
     } catch (stateError) {
       console.error("❌ Invalid state parameter:", stateError)
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=invalid_state`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=invalid_state`)
     }
 
     const { userId } = stateData
 
     if (!userId) {
       console.error("❌ No userId in state")
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=invalid_state`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=invalid_state`)
     }
 
     console.log("🔄 Exchanging code for access token...")
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Dynamic redirect URI based on environment
     let redirectUri = process.env.LINKEDIN_REDIRECT_URI
     if (!redirectUri) {
-      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+      const baseUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
       redirectUri = `${baseUrl}/api/auth/linkedin/callback`
     }
 
@@ -86,7 +90,8 @@ export async function GET(request: NextRequest) {
         responseStatus: tokenResponse.status,
         responseText: tokenError,
       })
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=token_exchange_failed`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=token_exchange_failed`)
     }
 
     const tokenData = await tokenResponse.json()
@@ -105,7 +110,8 @@ export async function GET(request: NextRequest) {
     if (!profileResponse.ok) {
       const profileError = await profileResponse.text()
       console.error("❌ Profile fetch failed:", profileResponse.status, profileError)
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=profile_fetch_failed`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=profile_fetch_failed`)
     }
 
     const profileData = await profileResponse.json()
@@ -139,7 +145,8 @@ export async function GET(request: NextRequest) {
 
     if (!updatedUser) {
       console.error("❌ User not found for update:", userId)
-      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=user_not_found`)
+      const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+      return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=user_not_found`)
     }
 
     // Also save to linkedindetails collection for backward compatibility
@@ -173,9 +180,11 @@ export async function GET(request: NextRequest) {
     console.log("✅ LinkedIn connection successful for user:", updatedUser.email)
 
     // Redirect back to LinkedIn dashboard with success
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?linkedin=connected`)
+    const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+    return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?linkedin=connected`)
   } catch (error) {
     console.error("❌ LinkedIn callback error:", error)
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard/linkedin?error=callback_failed`)
+    const redirectUrl = process.env.NEXTAUTH_URL || "https://linkzup.vercel.app"
+    return NextResponse.redirect(`${redirectUrl}/dashboard/linkedin?error=callback_failed`)
   }
 }
