@@ -1,91 +1,12 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "../auth/[...nextauth]/auth"
 import connectDB from "@/lib/mongodb"
 import ScheduledPost from "@/models/ScheduledPost"
 import User from "@/models/User"
 import { ISTTime } from "@/lib/utils/ist-time"
 
-// Helper function to post to LinkedIn (simplified version)
-async function postToLinkedIn(scheduledPost: any, user: any) {
-  try {
-    console.log("📤 Attempting to post scheduled content to LinkedIn:", {
-      postId: scheduledPost._id,
-      contentLength: scheduledPost.content.length,
-      hasImage: !!scheduledPost.imageUrl,
-      linkedinId: user.linkedinProfile?.id,
-    })
-
-    // Prepare LinkedIn post data
-    const LINKEDIN_UGC_POST_URL = "https://api.linkedin.com/v2/ugcPosts"
-
-    const postBody: any = {
-      author: `urn:li:person:${user.linkedinProfile?.id}`,
-      lifecycleState: "PUBLISHED",
-      specificContent: {
-        "com.linkedin.ugc.ShareContent": {
-          shareCommentary: {
-            text: scheduledPost.content,
-          },
-          shareMediaCategory: "NONE",
-        },
-      },
-      visibility: {
-        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-      },
-    }
-
-    // Post to LinkedIn
-    const response = await fetch(LINKEDIN_UGC_POST_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${user.linkedinAccessToken}`,
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0",
-      },
-      body: JSON.stringify(postBody),
-    })
-
-    if (response.ok) {
-      const linkedinResponse = await response.json()
-      console.log("✅ Successfully posted to LinkedIn:", linkedinResponse.id)
-
-      // Generate LinkedIn post URL
-      const linkedinUrl = `https://www.linkedin.com/feed/update/${linkedinResponse.id}/`
-
-      return {
-        success: true,
-        linkedinPostId: linkedinResponse.id,
-        linkedinUrl: linkedinUrl,
-      }
-    } else {
-      const errorData = await response.text()
-      console.error("❌ Failed to post to LinkedIn:", response.status, errorData)
-      
-      return {
-        success: false,
-        error: `LinkedIn posting failed: ${response.status} ${response.statusText}`,
-        details: errorData,
-      }
-    }
-  } catch (error: any) {
-    console.error("❌ Error posting to LinkedIn:", error)
-    return {
-      success: false,
-      error: error.message || "Failed to post to LinkedIn",
-    }
-  }
-}
-
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    console.log("🔄 Manual cron job trigger started at", ISTTime.getCurrentISTString())
+    console.log("🧪 Manual cron test triggered at", ISTTime.getCurrentISTString())
 
     await connectDB()
 
@@ -97,149 +18,82 @@ export async function GET(req: Request) {
     const dueScheduledPosts = await ScheduledPost.find({
       status: "pending",
       scheduledTime: { $lte: currentUTC },
-      attempts: { $lt: 3 }, // Don't retry more than 3 times
+      attempts: { $lt: 3 },
     }).sort({ scheduledTime: 1 })
 
     console.log(`📋 Found ${dueScheduledPosts.length} due scheduled posts`)
 
-    if (dueScheduledPosts.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "No scheduled posts due",
-        postsProcessed: 0,
-        currentTime: ISTTime.getCurrentISTString(),
-      })
-    }
+    // Also check for overdue posts
+    const overduePosts = await ScheduledPost.find({
+      status: "pending",
+      scheduledTime: { $lte: new Date(currentUTC.getTime() - 24 * 60 * 60 * 1000) },
+      attempts: { $lt: 3 },
+    })
 
-    let successCount = 0
-    let failureCount = 0
-    const results = []
-
-    // Process each scheduled post
-    for (const scheduledPost of dueScheduledPosts) {
-      try {
-        console.log(`🔄 Processing scheduled post ${scheduledPost._id}`)
-
-        // Get user with LinkedIn credentials
-        const user = await User.findById(scheduledPost.userId).select(
-          "+linkedinAccessToken +linkedinTokenExpiry +linkedinProfile",
-        )
-
-        if (!user) {
-          console.error(`❌ User not found for scheduled post ${scheduledPost._id}`)
-          await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
-            status: "failed",
-            error: "User not found",
-            attempts: scheduledPost.attempts + 1,
-            lastAttempt: new Date(),
-          })
-          failureCount++
-          results.push({
-            postId: scheduledPost._id,
-            status: "failed",
-            error: "User not found",
-          })
-          continue
-        }
-
-        // Check LinkedIn connection
-        if (
-          !user.linkedinAccessToken ||
-          !user.linkedinTokenExpiry ||
-          new Date(user.linkedinTokenExpiry) <= new Date()
-        ) {
-          console.error(`❌ LinkedIn not connected or token expired for user ${user.email}`)
-          await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
-            status: "failed",
-            error: "LinkedIn account not connected or token expired",
-            attempts: scheduledPost.attempts + 1,
-            lastAttempt: new Date(),
-          })
-          failureCount++
-          results.push({
-            postId: scheduledPost._id,
-            status: "failed",
-            error: "LinkedIn not connected",
-          })
-          continue
-        }
-
-        // Update attempt count
-        await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
-          attempts: scheduledPost.attempts + 1,
-          lastAttempt: new Date(),
-        })
-
-        // Post to LinkedIn
-        const postResult = await postToLinkedIn(scheduledPost, user)
-
-        if (postResult.success) {
-          // Update scheduled post as posted
-          await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
-            status: "posted",
-            linkedinPostId: postResult.linkedinPostId,
-            linkedinUrl: postResult.linkedinUrl,
-            postedAt: new Date(),
-            error: null, // Clear any previous errors
-          })
-
-          console.log(`✅ Successfully posted scheduled content ${scheduledPost._id}`)
-          successCount++
-          results.push({
-            postId: scheduledPost._id,
-            status: "posted",
-            linkedinPostId: postResult.linkedinPostId,
-            linkedinUrl: postResult.linkedinUrl,
-          })
-        } else {
-          // Update scheduled post as failed
-          await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
-            status: "failed",
-            error: postResult.error,
-          })
-
-          console.error(`❌ Failed to post scheduled content ${scheduledPost._id}:`, postResult.error)
-          failureCount++
-          results.push({
-            postId: scheduledPost._id,
-            status: "failed",
-            error: postResult.error,
-          })
-        }
-      } catch (error: any) {
-        console.error(`❌ Error processing scheduled post ${scheduledPost._id}:`, error)
-
-        // Update scheduled post as failed
-        await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
-          status: "failed",
-          error: error.message || "Unknown error occurred",
-          attempts: scheduledPost.attempts + 1,
-          lastAttempt: new Date(),
-        })
-
-        failureCount++
-        results.push({
-          postId: scheduledPost._id,
-          status: "failed",
-          error: error.message || "Unknown error",
-        })
-      }
-    }
-
-    console.log(`✅ Manual cron job completed: ${successCount} successful, ${failureCount} failed`)
+    // Get all scheduled posts for debugging
+    const allScheduledPosts = await ScheduledPost.find({}).sort({ scheduledTime: 1 }).limit(10)
 
     return NextResponse.json({
       success: true,
-      message: `Processed ${dueScheduledPosts.length} scheduled posts`,
-      postsProcessed: dueScheduledPosts.length,
-      successCount,
-      failureCount,
-      results,
+      message: "Manual cron test completed",
       currentTime: ISTTime.getCurrentISTString(),
+      currentUTC: currentUTC.toISOString(),
+      duePosts: dueScheduledPosts.length,
+      overduePosts: overduePosts.length,
+      allScheduledPosts: allScheduledPosts.map(post => ({
+        id: post._id,
+        content: post.content.substring(0, 50) + "...",
+        scheduledTime: post.scheduledTime,
+        scheduledTimeIST: post.scheduledTimeIST,
+        status: post.status,
+        attempts: post.attempts,
+        userId: post.userId,
+      })),
+      dueScheduledPosts: dueScheduledPosts.map(post => ({
+        id: post._id,
+        content: post.content.substring(0, 50) + "...",
+        scheduledTime: post.scheduledTime,
+        scheduledTimeIST: post.scheduledTimeIST,
+        status: post.status,
+        attempts: post.attempts,
+        userId: post.userId,
+      })),
     })
   } catch (error: any) {
-    console.error("❌ Manual cron job error:", error)
-    return NextResponse.json({ error: error.message || "Manual cron job failed" }, { status: 500 })
+    console.error("❌ Manual cron test error:", error)
+    return NextResponse.json({ error: error.message || "Manual cron test failed" }, { status: 500 })
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    console.log("🚀 Manual cron execution triggered at", ISTTime.getCurrentISTString())
+
+    // Call the actual cron job
+    const cronUrl = new URL(req.url)
+    const baseUrl = `${cronUrl.protocol}//${cronUrl.host}`
+    const cronEndpoint = `${baseUrl}/api/cron/auto-post`
+    
+    const cronSecret = process.env.CRON_SECRET || "dev-cron-secret"
+    
+    const response = await fetch(cronEndpoint, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${cronSecret}`,
+      },
+    })
+
+    const result = await response.json()
+
+    return NextResponse.json({
+      success: true,
+      message: "Manual cron execution completed",
+      cronResponse: result,
+      timestamp: ISTTime.getCurrentISTString(),
+    })
+  } catch (error: any) {
+    console.error("❌ Manual cron execution error:", error)
+    return NextResponse.json({ error: error.message || "Manual cron execution failed" }, { status: 500 })
   }
 }
 

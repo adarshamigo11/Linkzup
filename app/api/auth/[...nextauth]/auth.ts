@@ -4,6 +4,24 @@ import bcrypt from "bcryptjs"
 import connectDB from "@/lib/mongodb"
 import User from "@/models/User"
 
+// Validate required environment variables
+const requiredEnvVars = {
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+  MONGODB_URI: process.env.MONGODB_URI,
+}
+
+// Check for missing environment variables
+const missingEnvVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key)
+
+if (missingEnvVars.length > 0) {
+  console.warn(`⚠️ Missing environment variables: ${missingEnvVars.join(', ')}`)
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Required environment variables are missing in production')
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({

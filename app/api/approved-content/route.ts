@@ -1,14 +1,30 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "../auth/[...nextauth]/auth"
+import { getSafeServerSession, requireAuth } from "@/lib/auth-utils"
 import connectDB from "@/lib/mongodb"
 import User from "@/models/User"
 import mongoose from "mongoose"
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+    // Check if required environment variables are set
+    if (!process.env.MONGODB_URI) {
+      console.error("❌ MONGODB_URI environment variable is not set")
+      return NextResponse.json({ error: "Database configuration error" }, { status: 500 })
+    }
+
+    if (!process.env.NEXTAUTH_SECRET) {
+      console.error("❌ NEXTAUTH_SECRET environment variable is not set")
+      return NextResponse.json({ error: "Authentication configuration error" }, { status: 500 })
+    }
+
+    const session = await getSafeServerSession()
+    if (!session) {
+      return NextResponse.json({ error: "Authentication service unavailable" }, { status: 503 })
+    }
+
+    try {
+      requireAuth(session)
+    } catch (error) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -95,6 +111,7 @@ export async function GET(request: Request) {
         allContent = [...allContent, ...normalizedContent]
       } catch (error) {
         console.error(`❌ Error querying ${collectionName}:`, error)
+        // Continue with other collections even if one fails
       }
     }
 
@@ -132,8 +149,25 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+    // Check if required environment variables are set
+    if (!process.env.MONGODB_URI) {
+      console.error("❌ MONGODB_URI environment variable is not set")
+      return NextResponse.json({ error: "Database configuration error" }, { status: 500 })
+    }
+
+    if (!process.env.NEXTAUTH_SECRET) {
+      console.error("❌ NEXTAUTH_SECRET environment variable is not set")
+      return NextResponse.json({ error: "Authentication configuration error" }, { status: 500 })
+    }
+
+    const session = await getSafeServerSession()
+    if (!session) {
+      return NextResponse.json({ error: "Authentication service unavailable" }, { status: 503 })
+    }
+
+    try {
+      requireAuth(session)
+    } catch (error) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

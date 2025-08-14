@@ -5,6 +5,37 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Environment variable validation utility
+export function validateEnvVars() {
+  const requiredEnvVars = {
+    MONGODB_URI: process.env.MONGODB_URI,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  }
+
+  const missingEnvVars = Object.entries(requiredEnvVars)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key)
+
+  if (missingEnvVars.length > 0) {
+    console.warn(`⚠️ Missing environment variables: ${missingEnvVars.join(', ')}`)
+    return false
+  }
+
+  console.log('✅ All required environment variables are set')
+  return true
+}
+
+// Safe database connection check
+export function isDatabaseConfigured() {
+  return !!process.env.MONGODB_URI
+}
+
+// Safe auth configuration check
+export function isAuthConfigured() {
+  return !!(process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_URL)
+}
+
 // Utility function for consistent signout handling
 export async function handleSignOut(router?: any) {
   try {
