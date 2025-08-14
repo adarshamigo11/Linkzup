@@ -31,6 +31,7 @@ export async function GET() {
       redirectUri,
       environment: process.env.NODE_ENV,
       nextAuthUrl: process.env.NEXTAUTH_URL,
+      linkedinRedirectUri: process.env.LINKEDIN_REDIRECT_URI,
     })
 
     // Generate state parameter for security
@@ -58,10 +59,17 @@ export async function GET() {
     authUrl.searchParams.set("scope", scopes)
 
     console.log("Generated LinkedIn auth URL:", authUrl.toString())
+    console.log("🔍 Redirect URI being sent:", redirectUri)
 
     return NextResponse.json({
       authUrl: authUrl.toString(),
       state,
+      debug: {
+        redirectUri,
+        nextAuthUrl: process.env.NEXTAUTH_URL,
+        linkedinRedirectUri: process.env.LINKEDIN_REDIRECT_URI,
+        environment: process.env.NODE_ENV,
+      }
     })
   } catch (error) {
     console.error("LinkedIn auth error:", error)
