@@ -1,177 +1,170 @@
 import { NextResponse } from "next/server"
-import connectDB from "@/lib/mongodb"
+import { connectDB } from "@/lib/mongodb"
 import ScheduledPost from "@/models/ScheduledPost"
 import User from "@/models/User"
-import { ISTTime } from "@/lib/utils/ist-time"
+import LinkedInDetails from "@/models/LinkedInDetails"
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    console.log("🔍 Debug scheduled posts at", ISTTime.getCurrentISTString())
-
     await connectDB()
 
-    // Get current UTC time
-    const currentUTC = ISTTime.getCurrentUTC()
-    console.log("⏰ Current UTC time:", currentUTC.toISOString())
+    // Get all scheduled posts
+    const allScheduledPosts = await ScheduledPost.find({})
+      .populate('userId', 'email name')
+      .sort({ scheduledFor: 1 })
 
-    // Find all scheduled posts with detailed status
-    const allScheduledPosts = await ScheduledPost.find({}).sort({ scheduledTime: 1 })
+    // Get current time
+    const now = new Date()
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000)
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
 
-    // Find overdue posts
-    const overduePosts = await ScheduledPost.find({
-      status: "pending",
-      scheduledTime: { $lte: currentUTC },
-      attempts: { $lt: 3 },
-    }).sort({ scheduledTime: 1 })
+    // Categorize posts
+    const duePosts = allScheduledPosts.filter(post => 
+      post.scheduledFor <= now && post.status === 'scheduled'
+    )
 
-    // Find failed posts
-    const failedPosts = await ScheduledPost.find({
-      status: "failed",
-    }).sort({ lastAttempt: -1 })
+    const overduePosts = allScheduledPosts.filter(post => 
+      post.scheduledFor < oneHourAgo && post.status === 'scheduled'
+    )
 
-    // Get detailed user info for overdue posts
-    const overduePostsWithUserInfo = await Promise.all(
-      overduePosts.map(async (post) => {
-        const user = await User.findById(post.userId).select(
-          "+linkedinAccessToken +linkedinTokenExpiry +linkedinProfile"
-        )
+    const failedPosts = allScheduledPosts.filter(post => 
+      post.status === 'failed'
+    )
+
+    const successfulPosts = allScheduledPosts.filter(post => 
+      post.status === 'posted'
+    )
+
+    // Check LinkedIn connections for users with scheduled posts
+    const usersWithPosts = [...new Set(allScheduledPosts.map(post => post.userId.toString()))]
+    const linkedinStatuses = await Promise.all(
+      usersWithPosts.map(async (userId) => {
+        const user = await User.findById(userId)
+        const linkedinDetails = await LinkedInDetails.findOne({ userId })
         
         return {
-          postId: post._id,
-          content: post.content.substring(0, 100) + "...",
-          scheduledTime: post.scheduledTime,
-          scheduledTimeIST: post.scheduledTimeIST,
-          status: post.status,
-          attempts: post.attempts,
-          error: post.error,
-          lastAttempt: post.lastAttempt,
-          user: user ? {
-            email: user.email,
-            hasLinkedInToken: !!user.linkedinAccessToken,
-            linkedinTokenExpiry: user.linkedinTokenExpiry,
-            isTokenExpired: user.linkedinTokenExpiry ? new Date(user.linkedinTokenExpiry) <= new Date() : true,
-            hasLinkedInProfile: !!user.linkedinProfile?.id,
-            linkedinProfileId: user.linkedinProfile?.id,
-          } : null
+          userId,
+          userEmail: user?.email,
+          linkedinConnected: !!linkedinDetails?.accessToken,
+          accessTokenExpires: linkedinDetails?.accessTokenExpires,
+          accessTokenExpired: linkedinDetails?.accessTokenExpires ? 
+            new Date(linkedinDetails.accessTokenExpires) < now : true,
+          hasValidToken: linkedinDetails?.accessToken && 
+            (!linkedinDetails.accessTokenExpires || new Date(linkedinDetails.accessTokenExpires) > now)
         }
       })
     )
 
     return NextResponse.json({
       success: true,
-      debug: {
-        currentTime: ISTTime.getCurrentISTString(),
-        currentUTC: currentUTC.toISOString(),
+      summary: {
         totalScheduledPosts: allScheduledPosts.length,
+        duePosts: duePosts.length,
         overduePosts: overduePosts.length,
         failedPosts: failedPosts.length,
-        overduePostsDetails: overduePostsWithUserInfo,
-        failedPostsDetails: failedPosts.map(post => ({
-          postId: post._id,
-          content: post.content.substring(0, 100) + "...",
-          scheduledTime: post.scheduledTime,
-          status: post.status,
-          attempts: post.attempts,
-          error: post.error,
-          lastAttempt: post.lastAttempt,
-        })),
-        allPostsSummary: allScheduledPosts.map(post => ({
-          postId: post._id,
-          status: post.status,
-          scheduledTime: post.scheduledTime,
-          attempts: post.attempts,
-          error: post.error,
-        }))
+        successfulPosts: successfulPosts.length,
+        usersWithLinkedInConnection: linkedinStatuses.filter(s => s.linkedinConnected).length,
+        usersWithValidToken: linkedinStatuses.filter(s => s.hasValidToken).length
+      },
+      duePosts: duePosts.map(post => ({
+        id: post._id,
+        content: post.content.substring(0, 100) + '...',
+        scheduledFor: post.scheduledFor,
+        status: post.status,
+        userId: post.userId,
+        createdAt: post.createdAt
+      })),
+      overduePosts: overduePosts.map(post => ({
+        id: post._id,
+        content: post.content.substring(0, 100) + '...',
+        scheduledFor: post.scheduledFor,
+        status: post.status,
+        userId: post.userId,
+        createdAt: post.createdAt,
+        overdueBy: Math.floor((now.getTime() - post.scheduledFor.getTime()) / (1000 * 60)) + ' minutes'
+      })),
+      failedPosts: failedPosts.map(post => ({
+        id: post._id,
+        content: post.content.substring(0, 100) + '...',
+        scheduledFor: post.scheduledFor,
+        status: post.status,
+        error: post.error,
+        userId: post.userId,
+        createdAt: post.createdAt
+      })),
+      linkedinStatuses,
+      currentTime: now,
+      cronJobStatus: {
+        lastCheck: fiveMinutesAgo,
+        shouldHaveRun: duePosts.length > 0 || overduePosts.length > 0
       }
     })
   } catch (error: any) {
-    console.error("❌ Debug error:", error)
-    return NextResponse.json({ error: error.message || "Debug failed" }, { status: 500 })
+    console.error("Debug scheduled posts error:", error)
+    return NextResponse.json({ 
+      error: error.message,
+      stack: error.stack 
+    }, { status: 500 })
   }
 }
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    console.log("🚀 Manual debug execution at", ISTTime.getCurrentISTString())
-
     await connectDB()
 
-    // Get current UTC time
-    const currentUTC = ISTTime.getCurrentUTC()
-
-    // Find overdue posts
+    // Get overdue posts and check their LinkedIn status
+    const now = new Date()
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+    
     const overduePosts = await ScheduledPost.find({
-      status: "pending",
-      scheduledTime: { $lte: currentUTC },
-      attempts: { $lt: 3 },
-    }).sort({ scheduledTime: 1 })
+      scheduledFor: { $lt: oneHourAgo },
+      status: 'scheduled'
+    }).populate('userId', 'email name')
 
-    if (overduePosts.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "No overdue posts found",
-        currentTime: ISTTime.getCurrentISTString(),
+    const analysis = await Promise.all(
+      overduePosts.map(async (post) => {
+        const linkedinDetails = await LinkedInDetails.findOne({ userId: post.userId })
+        
+        return {
+          postId: post._id,
+          content: post.content.substring(0, 100) + '...',
+          scheduledFor: post.scheduledFor,
+          overdueBy: Math.floor((now.getTime() - post.scheduledFor.getTime()) / (1000 * 60)) + ' minutes',
+          userEmail: post.userId.email,
+          linkedinConnected: !!linkedinDetails?.accessToken,
+          accessTokenExpired: linkedinDetails?.accessTokenExpires ? 
+            new Date(linkedinDetails.accessTokenExpires) < now : true,
+          hasValidToken: linkedinDetails?.accessToken && 
+            (!linkedinDetails.accessTokenExpires || new Date(linkedinDetails.accessTokenExpires) > now),
+          possibleIssues: []
+        }
       })
-    }
+    )
 
-    const results = []
-
-    // Process each overdue post with detailed logging
-    for (const post of overduePosts) {
-      try {
-        console.log(`🔍 Debugging post ${post._id}`)
-
-        const user = await User.findById(post.userId).select(
-          "+linkedinAccessToken +linkedinTokenExpiry +linkedinProfile"
-        )
-
-        if (!user) {
-          results.push({
-            postId: post._id,
-            status: "error",
-            error: "User not found",
-            userInfo: null
-          })
-          continue
-        }
-
-        // Check LinkedIn connection
-        const linkedinStatus = {
-          hasToken: !!user.linkedinAccessToken,
-          tokenExpiry: user.linkedinTokenExpiry,
-          isExpired: user.linkedinTokenExpiry ? new Date(user.linkedinTokenExpiry) <= new Date() : true,
-          hasProfile: !!user.linkedinProfile?.id,
-          profileId: user.linkedinProfile?.id,
-        }
-
-        results.push({
-          postId: post._id,
-          status: "analyzed",
-          content: post.content.substring(0, 100) + "...",
-          scheduledTime: post.scheduledTime,
-          attempts: post.attempts,
-          error: post.error,
-          linkedinStatus,
-          userEmail: user.email
-        })
-
-      } catch (error: any) {
-        results.push({
-          postId: post._id,
-          status: "error",
-          error: error.message
-        })
+    // Add possible issues
+    analysis.forEach(item => {
+      if (!item.linkedinConnected) {
+        item.possibleIssues.push('LinkedIn not connected')
       }
-    }
+      if (item.accessTokenExpired) {
+        item.possibleIssues.push('LinkedIn access token expired')
+      }
+      if (item.overdueBy.includes('-')) {
+        item.possibleIssues.push('Post scheduled in the future')
+      }
+    })
 
     return NextResponse.json({
       success: true,
-      message: `Analyzed ${overduePosts.length} overdue posts`,
-      results,
-      currentTime: ISTTime.getCurrentISTString(),
+      overduePostsAnalysis: analysis,
+      totalOverdue: overduePosts.length,
+      currentTime: now
     })
   } catch (error: any) {
-    console.error("❌ Manual debug error:", error)
-    return NextResponse.json({ error: error.message || "Manual debug failed" }, { status: 500 })
+    console.error("Analyze overdue posts error:", error)
+    return NextResponse.json({ 
+      error: error.message,
+      stack: error.stack 
+    }, { status: 500 })
   }
 }
