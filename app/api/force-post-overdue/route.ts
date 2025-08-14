@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { connectDB } from "@/lib/mongodb"
 import ScheduledPost from "@/models/ScheduledPost"
 import LinkedInDetails from "@/models/LinkedInDetails"
-import { postToLinkedIn } from "@/lib/services/linkedin-service"
+import { LinkedInService } from "@/lib/services/linkedin-service"
 
 export async function POST() {
   try {
@@ -11,8 +11,8 @@ export async function POST() {
     // Find the most recent overdue post
     const now = new Date()
     const overduePost = await ScheduledPost.findOne({
-      scheduledFor: { $lt: now },
-      status: 'scheduled'
+      scheduledTime: { $lt: now },
+      status: 'pending'
     }).populate('userId', 'email name')
 
     if (!overduePost) {
@@ -46,28 +46,36 @@ export async function POST() {
 
     // Attempt to post to LinkedIn
     try {
-      const result = await postToLinkedIn(
+      const linkedinService = new LinkedInService()
+      const result = await linkedinService.postToLinkedIn(
         overduePost.content,
+        overduePost.imageUrl,
         linkedinDetails.accessToken,
         linkedinDetails.profileId
       )
 
-      // Update post status
-      await ScheduledPost.findByIdAndUpdate(overduePost._id, {
-        status: 'posted',
-        postedAt: new Date(),
-        linkedinPostId: result.id,
-        error: null
-      })
+      if (result.success) {
+        // Update post status
+        await ScheduledPost.findByIdAndUpdate(overduePost._id, {
+          status: 'posted',
+          postedAt: new Date(),
+          linkedinPostId: result.postId,
+          linkedinUrl: result.url,
+          error: null
+        })
 
-      return NextResponse.json({
-        success: true,
-        message: "Post successfully posted to LinkedIn",
-        postId: overduePost._id,
-        linkedinPostId: result.id,
-        content: overduePost.content.substring(0, 100) + '...',
-        userEmail: overduePost.userId.email
-      })
+        return NextResponse.json({
+          success: true,
+          message: "Post successfully posted to LinkedIn",
+          postId: overduePost._id,
+          linkedinPostId: result.postId,
+          linkedinUrl: result.url,
+          content: overduePost.content.substring(0, 100) + '...',
+          userEmail: overduePost.userId.email
+        })
+      } else {
+        throw new Error(result.error || 'LinkedIn posting failed')
+      }
 
     } catch (postError: any) {
       console.error("LinkedIn posting error:", postError)

@@ -20,11 +20,11 @@ export async function GET() {
 
     // Categorize posts
     const duePosts = allScheduledPosts.filter(post => 
-      post.scheduledFor <= now && post.status === 'scheduled'
+      post.scheduledTime <= now && post.status === 'pending'
     )
 
     const overduePosts = allScheduledPosts.filter(post => 
-      post.scheduledFor < oneHourAgo && post.status === 'scheduled'
+      post.scheduledTime < oneHourAgo && post.status === 'pending'
     )
 
     const failedPosts = allScheduledPosts.filter(post => 
@@ -69,7 +69,7 @@ export async function GET() {
       duePosts: duePosts.map(post => ({
         id: post._id,
         content: post.content.substring(0, 100) + '...',
-        scheduledFor: post.scheduledFor,
+        scheduledTime: post.scheduledTime,
         status: post.status,
         userId: post.userId,
         createdAt: post.createdAt
@@ -77,16 +77,16 @@ export async function GET() {
       overduePosts: overduePosts.map(post => ({
         id: post._id,
         content: post.content.substring(0, 100) + '...',
-        scheduledFor: post.scheduledFor,
+        scheduledTime: post.scheduledTime,
         status: post.status,
         userId: post.userId,
         createdAt: post.createdAt,
-        overdueBy: Math.floor((now.getTime() - post.scheduledFor.getTime()) / (1000 * 60)) + ' minutes'
+        overdueBy: Math.floor((now.getTime() - post.scheduledTime.getTime()) / (1000 * 60)) + ' minutes'
       })),
       failedPosts: failedPosts.map(post => ({
         id: post._id,
         content: post.content.substring(0, 100) + '...',
-        scheduledFor: post.scheduledFor,
+        scheduledTime: post.scheduledTime,
         status: post.status,
         error: post.error,
         userId: post.userId,
@@ -117,8 +117,8 @@ export async function POST() {
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
     
     const overduePosts = await ScheduledPost.find({
-      scheduledFor: { $lt: oneHourAgo },
-      status: 'scheduled'
+      scheduledTime: { $lt: oneHourAgo },
+      status: 'pending'
     }).populate('userId', 'email name')
 
     const analysis = await Promise.all(
@@ -128,8 +128,8 @@ export async function POST() {
         return {
           postId: post._id,
           content: post.content.substring(0, 100) + '...',
-          scheduledFor: post.scheduledFor,
-          overdueBy: Math.floor((now.getTime() - post.scheduledFor.getTime()) / (1000 * 60)) + ' minutes',
+          scheduledTime: post.scheduledTime,
+          overdueBy: Math.floor((now.getTime() - post.scheduledTime.getTime()) / (1000 * 60)) + ' minutes',
           userEmail: post.userId.email,
           linkedinConnected: !!linkedinDetails?.accessToken,
           accessTokenExpired: linkedinDetails?.accessTokenExpires ? 

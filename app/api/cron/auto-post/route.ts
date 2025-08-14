@@ -3,199 +3,29 @@ import connectDB from "@/lib/mongodb"
 import ScheduledPost from "@/models/ScheduledPost"
 import User from "@/models/User"
 import { ISTTime } from "@/lib/utils/ist-time"
-
-// Helper function to upload image to LinkedIn
-async function uploadImageToLinkedIn(imageUrl: string, accessToken: string, linkedinPersonId: string) {
-  try {
-    console.log("🖼️ Starting image upload to LinkedIn:", imageUrl)
-
-    // Step 1: Register the image upload
-    const registerUploadUrl = "https://api.linkedin.com/v2/assets?action=registerUpload"
-    const registerUploadBody = {
-      registerUploadRequest: {
-        recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
-        owner: `urn:li:person:${linkedinPersonId}`,
-        serviceRelationships: [
-          {
-            relationshipType: "OWNER",
-            identifier: "urn:li:userGeneratedContent",
-          },
-        ],
-      },
-    }
-
-    const registerResponse = await fetch(registerUploadUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0",
-      },
-      body: JSON.stringify(registerUploadBody),
-    })
-
-    if (!registerResponse.ok) {
-      const errorText = await registerResponse.text()
-      console.error("❌ Failed to register upload:", errorText)
-      throw new Error(`Failed to register upload: ${registerResponse.status} ${errorText}`)
-    }
-
-    const registerData = await registerResponse.json()
-    console.log("📝 Upload registered successfully")
-
-    // Step 2: Download the image from the URL
-    const imageResponse = await fetch(imageUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    })
-
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.status}`)
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer()
-    console.log("📷 Image downloaded, size:", imageBuffer.byteLength)
-
-    // Step 3: Upload the image to LinkedIn
-    const uploadUrl =
-      registerData.value.uploadMechanism["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"].uploadUrl
-
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/octet-stream",
-      },
-      body: imageBuffer,
-    })
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text()
-      console.error("❌ Failed to upload image:", errorText)
-      throw new Error(`Failed to upload image: ${uploadResponse.status} ${errorText}`)
-    }
-
-    console.log("✅ Image uploaded successfully to LinkedIn")
-    return registerData.value.asset
-  } catch (error) {
-    console.error("❌ Error uploading image to LinkedIn:", error)
-    throw error
-  }
-}
-
-// Helper function to post to LinkedIn
-async function postToLinkedIn(scheduledPost: any, user: any) {
-  try {
-    console.log("📤 Posting scheduled content to LinkedIn:", {
-      postId: scheduledPost._id,
-      contentLength: scheduledPost.content.length,
-      hasImage: !!scheduledPost.imageUrl,
-      linkedinId: user.linkedinProfile?.id,
-    })
-
-    // Prepare LinkedIn post data
-    const LINKEDIN_UGC_POST_URL = "https://api.linkedin.com/v2/ugcPosts"
-
-    const postBody: any = {
-      author: `urn:li:person:${user.linkedinProfile?.id}`,
-      lifecycleState: "PUBLISHED",
-      specificContent: {
-        "com.linkedin.ugc.ShareContent": {
-          shareCommentary: {
-            text: scheduledPost.content,
-          },
-          shareMediaCategory: "NONE",
-        },
-      },
-      visibility: {
-        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-      },
-    }
-
-    // If there's an image, upload it to LinkedIn first
-    if (scheduledPost.imageUrl) {
-      try {
-        console.log("📷 Scheduled post has image, uploading to LinkedIn:", scheduledPost.imageUrl)
-
-        // Upload image to LinkedIn
-        const imageAsset = await uploadImageToLinkedIn(
-          scheduledPost.imageUrl,
-          user.linkedinAccessToken!,
-          user.linkedinProfile?.id!,
-        )
-
-        // Update post body to include the image
-        postBody.specificContent["com.linkedin.ugc.ShareContent"].shareMediaCategory = "IMAGE"
-        postBody.specificContent["com.linkedin.ugc.ShareContent"].media = [
-          {
-            status: "READY",
-            description: {
-              text: "Scheduled LinkedIn Post Image",
-            },
-            media: imageAsset,
-            title: {
-              text: "Scheduled LinkedIn Post Image",
-            },
-          },
-        ]
-
-        console.log("✅ Image prepared for scheduled LinkedIn post")
-      } catch (imageError) {
-        console.error("❌ Error handling image for scheduled post:", imageError)
-        // Continue with text-only post if image upload fails
-        console.log("🔄 Falling back to text-only post for scheduled content")
-      }
-    }
-
-    // Post to LinkedIn
-    const response = await fetch(LINKEDIN_UGC_POST_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${user.linkedinAccessToken}`,
-        "Content-Type": "application/json",
-        "X-Restli-Protocol-Version": "2.0.0",
-      },
-      body: JSON.stringify(postBody),
-    })
-
-    if (response.ok) {
-      const linkedinResponse = await response.json()
-      console.log("✅ Successfully posted scheduled content to LinkedIn:", linkedinResponse.id)
-
-      // Generate LinkedIn post URL
-      const linkedinUrl = `https://www.linkedin.com/feed/update/${linkedinResponse.id}/`
-
-      return {
-        success: true,
-        linkedinPostId: linkedinResponse.id,
-        linkedinUrl: linkedinUrl,
-        linkedinResponse: linkedinResponse,
-      }
-    } else {
-      const errorData = await response.text()
-      console.error("❌ Failed to post scheduled content to LinkedIn:", response.status, errorData)
-
-      return {
-        success: false,
-        error: `LinkedIn posting failed: ${response.status} ${response.statusText}`,
-        details: errorData,
-      }
-    }
-  } catch (error: any) {
-    console.error("❌ Error posting scheduled content to LinkedIn:", error)
-    return {
-      success: false,
-      error: error.message || "Failed to post scheduled content to LinkedIn",
-    }
-  }
-}
+import { LinkedInService } from "@/lib/services/linkedin-service"
 
 export async function GET(req: Request) {
   try {
-    // TEMPORARILY DISABLE AUTH FOR TESTING
-    console.log("🔄 Starting scheduled posts cron job at", ISTTime.getCurrentISTString())
-    console.log("⚠️ Authentication temporarily disabled for testing")
+    console.log("🔄 External cron job triggered at", ISTTime.getCurrentISTString())
+    
+    // Check for auth header or query param for external cron services
+    const authHeader = req.headers.get('authorization')
+    const authQuery = new URL(req.url).searchParams.get('auth')
+    const cronSecret = process.env.CRON_SECRET || 'dev-cron-secret'
+    
+    // Allow both header and query param authentication for external cron services
+    const isAuthenticated = authHeader === `Bearer ${cronSecret}` || authQuery === cronSecret
+    
+    if (!isAuthenticated) {
+      console.log("❌ Cron job authentication failed")
+      return NextResponse.json({ 
+        error: "Unauthorized", 
+        message: "Use Authorization: Bearer dev-cron-secret header or ?auth=dev-cron-secret query param" 
+      }, { status: 401 })
+    }
+
+    console.log("✅ Cron job authenticated successfully")
 
     await connectDB()
 
@@ -212,33 +42,42 @@ export async function GET(req: Request) {
 
     console.log(`📋 Found ${dueScheduledPosts.length} due scheduled posts`)
 
-    // Also check for overdue posts that might have been missed
+    // Also check for overdue posts that might have been missed (posts due more than 5 minutes ago)
+    const fiveMinutesAgo = new Date(currentUTC.getTime() - 5 * 60 * 1000)
     const overduePosts = await ScheduledPost.find({
       status: "pending",
-      scheduledTime: { $lte: new Date(currentUTC.getTime() - 24 * 60 * 60 * 1000) }, // Posts due more than 24 hours ago
+      scheduledTime: { $lte: fiveMinutesAgo },
       attempts: { $lt: 3 },
     })
 
     if (overduePosts.length > 0) {
-      console.log(`⚠️ Found ${overduePosts.length} overdue posts that need attention`)
+      console.log(`⚠️ Found ${overduePosts.length} overdue posts that need immediate attention`)
     }
 
-    if (dueScheduledPosts.length === 0) {
+    // Combine due and overdue posts, prioritizing overdue ones
+    const allPostsToProcess = [...overduePosts, ...dueScheduledPosts.filter(post => 
+      !overduePosts.some(overdue => overdue._id.toString() === post._id.toString())
+    )]
+
+    if (allPostsToProcess.length === 0) {
       return NextResponse.json({
         success: true,
         message: "No scheduled posts due",
         postsProcessed: 0,
         overduePosts: overduePosts.length,
         currentTime: ISTTime.getCurrentISTString(),
-        authStatus: "disabled-for-testing",
+        cronService: "external-cron-job.org",
       })
     }
 
+    console.log(`🚀 Processing ${allPostsToProcess.length} posts (${overduePosts.length} overdue, ${dueScheduledPosts.length} due)`)
+
     let successCount = 0
     let failureCount = 0
+    const results = []
 
     // Process each scheduled post
-    for (const scheduledPost of dueScheduledPosts) {
+    for (const scheduledPost of allPostsToProcess) {
       try {
         console.log(`🔄 Processing scheduled post ${scheduledPost._id} (scheduled for: ${scheduledPost.scheduledTime})`)
 
@@ -256,6 +95,7 @@ export async function GET(req: Request) {
             lastAttempt: new Date(),
           })
           failureCount++
+          results.push({ postId: scheduledPost._id, status: "failed", error: "User not found" })
           continue
         }
 
@@ -273,6 +113,7 @@ export async function GET(req: Request) {
             lastAttempt: new Date(),
           })
           failureCount++
+          results.push({ postId: scheduledPost._id, status: "failed", error: "LinkedIn not connected" })
           continue
         }
 
@@ -282,53 +123,43 @@ export async function GET(req: Request) {
           lastAttempt: new Date(),
         })
 
-        // Post to LinkedIn with retry logic for rate limiting
-        let postResult: any = null
-        let retryCount = 0
-        const maxRetries = 3
-        
-        while (retryCount < maxRetries) {
-          try {
-            postResult = await postToLinkedIn(scheduledPost, user)
-            break // Success, exit retry loop
-          } catch (error: any) {
-            retryCount++
-            console.error(`❌ Attempt ${retryCount} failed for post ${scheduledPost._id}:`, error.message)
-            
-            if (error.message.includes('rate limit') || error.message.includes('429')) {
-              if (retryCount < maxRetries) {
-                console.log(`⏳ Rate limit hit, waiting ${retryCount * 30} seconds before retry...`)
-                await new Promise(resolve => setTimeout(resolve, retryCount * 30000)) // Wait 30s, 60s, 90s
-                continue
-              }
-            }
-            
-            // For non-rate-limit errors or max retries reached, break
-            break
-          }
-        }
+        // Post to LinkedIn using the LinkedIn service
+        const linkedinService = new LinkedInService()
+        const postResult = await linkedinService.postToLinkedIn(
+          scheduledPost.content,
+          scheduledPost.imageUrl,
+          user.linkedinAccessToken,
+          user.linkedinProfile?.id
+        )
 
-        if (postResult && postResult.success) {
+        if (postResult.success) {
           // Update scheduled post as posted
           await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
             status: "posted",
-            linkedinPostId: postResult.linkedinPostId,
-            linkedinUrl: postResult.linkedinUrl,
+            linkedinPostId: postResult.postId,
+            linkedinUrl: postResult.url,
             postedAt: new Date(),
             error: null, // Clear any previous errors
           })
 
           console.log(`✅ Successfully posted scheduled content ${scheduledPost._id}`)
           successCount++
+          results.push({ 
+            postId: scheduledPost._id, 
+            status: "posted", 
+            linkedinPostId: postResult.postId,
+            linkedinUrl: postResult.url
+          })
         } else {
           // Update scheduled post as failed
           await ScheduledPost.findByIdAndUpdate(scheduledPost._id, {
             status: "failed",
-            error: postResult?.error || "Failed to post after all retry attempts",
+            error: postResult.error || "Failed to post to LinkedIn",
           })
 
-          console.error(`❌ Failed to post scheduled content ${scheduledPost._id}:`, postResult?.error || "Unknown error")
+          console.error(`❌ Failed to post scheduled content ${scheduledPost._id}:`, postResult.error)
           failureCount++
+          results.push({ postId: scheduledPost._id, status: "failed", error: postResult.error })
         }
       } catch (error: any) {
         console.error(`❌ Error processing scheduled post ${scheduledPost._id}:`, error)
@@ -342,6 +173,7 @@ export async function GET(req: Request) {
         })
 
         failureCount++
+        results.push({ postId: scheduledPost._id, status: "failed", error: error.message })
       }
     }
 
@@ -349,16 +181,22 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Processed ${dueScheduledPosts.length} scheduled posts`,
-      postsProcessed: dueScheduledPosts.length,
+      message: `Processed ${allPostsToProcess.length} scheduled posts`,
+      postsProcessed: allPostsToProcess.length,
       successCount,
       failureCount,
       overduePosts: overduePosts.length,
+      duePosts: dueScheduledPosts.length,
+      results,
       currentTime: ISTTime.getCurrentISTString(),
-      authStatus: "disabled-for-testing",
+      cronService: "external-cron-job.org",
     })
   } catch (error: any) {
     console.error("❌ Cron job error:", error)
-    return NextResponse.json({ error: error.message || "Cron job failed" }, { status: 500 })
+    return NextResponse.json({ 
+      error: error.message || "Cron job failed",
+      currentTime: ISTTime.getCurrentISTString(),
+      cronService: "external-cron-job.org"
+    }, { status: 500 })
   }
 }
