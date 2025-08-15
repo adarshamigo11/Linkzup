@@ -121,6 +121,9 @@ export async function POST(request: Request) {
       contentType,
     )
 
+    // Map content type to match model enum
+    const mappedContentType = contentType === "story" ? "storytelling" : contentType
+
     const approvedContent = await ApprovedContent.create({
       id: `content-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: user._id,
@@ -129,7 +132,7 @@ export async function POST(request: Request) {
       content: generatedContent,
       hashtags: [],
       keyPoints: [],
-      contentType: contentType,
+      contentType: mappedContentType,
       language: story?.customizationData?.content_language || profile?.contentLanguage || "English", // Added language field
       status: "generated",
       platform: "linkedin",

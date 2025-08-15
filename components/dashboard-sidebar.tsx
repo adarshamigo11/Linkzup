@@ -54,6 +54,7 @@ export function DashboardSidebar({ onClose, isOpen = true, className }: Dashboar
   const [linkedinStatus, setLinkedinStatus] = useState<LinkedInStatus>({ isConnected: false })
   const [connecting, setConnecting] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [hasShownConnectionNotification, setHasShownConnectionNotification] = useState(false)
   const notificationService = useNotificationService()
 
   const isActive = (path: string) => pathname === path
@@ -135,9 +136,14 @@ export function DashboardSidebar({ onClose, isOpen = true, className }: Dashboar
         const data = await response.json()
         console.log("LinkedIn status data:", data) // Debug log
 
-        // Show success message if newly connected
-        if (data.isConnected && !linkedinStatus.isConnected) {
+        // Only show notification if this is the first time checking and LinkedIn is connected
+        // or if the connection status actually changed from disconnected to connected
+        const wasConnected = linkedinStatus.isConnected
+        const isNowConnected = data.isConnected
+        
+        if (isNowConnected && !wasConnected && linkedinStatus.isConnected !== undefined && !hasShownConnectionNotification) {
           notificationService.linkedinConnected(data.linkedinName || "LinkedIn Account")
+          setHasShownConnectionNotification(true)
         }
 
         setLinkedinStatus(data)
@@ -155,7 +161,7 @@ export function DashboardSidebar({ onClose, isOpen = true, className }: Dashboar
   // Check LinkedIn connection status on mount and periodically
   useEffect(() => {
     checkLinkedInStatus()
-    const interval = setInterval(checkLinkedInStatus, 30000) // Check every 30 seconds
+    const interval = setInterval(checkLinkedInStatus, 120000) // Check every 2 minutes instead of 30 seconds
     return () => clearInterval(interval)
   }, [])
 
@@ -199,6 +205,7 @@ export function DashboardSidebar({ onClose, isOpen = true, className }: Dashboar
 
       if (response.ok) {
         setLinkedinStatus({ isConnected: false })
+        setHasShownConnectionNotification(false) // Reset notification flag
         notificationService.linkedinDisconnected()
       } else {
         toast.error("Failed to disconnect LinkedIn account")
@@ -211,9 +218,17 @@ export function DashboardSidebar({ onClose, isOpen = true, className }: Dashboar
     }
   }
 
-  // Sync LinkedIn data
+  // Sync LinkedIn data with debounce
+  const [isSyncing, setIsSyncing] = useState(false)
+  
   const handleSyncLinkedIn = async () => {
+    if (isSyncing) {
+      toast.info("Sync already in progress...")
+      return
+    }
+    
     try {
+      setIsSyncing(true)
       setLoading(true)
 
       const response = await fetch("/api/linkedin/sync", {
@@ -231,6 +246,7 @@ export function DashboardSidebar({ onClose, isOpen = true, className }: Dashboar
       console.error("Error syncing LinkedIn:", error)
       toast.error("Failed to sync LinkedIn data")
     } finally {
+      setIsSyncing(false)
       setLoading(false)
     }
   }
