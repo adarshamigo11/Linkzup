@@ -166,15 +166,15 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="h-8 bg-gray-200 rounded w-64 animate-pulse"></div>
             <div className="h-4 bg-gray-200 rounded w-96 mt-2 animate-pulse"></div>
           </div>
         </div>
         <Card className="animate-pulse">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-20 bg-gray-200 rounded"></div>
@@ -187,14 +187,14 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-          <p className="text-gray-600 mt-1">Manage user accounts and subscriptions</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Users Management</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage user accounts and subscriptions</p>
         </div>
-        <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
+        <div className="flex items-center gap-2 bg-blue-50 px-3 sm:px-4 py-2 rounded-lg">
           <Users className="h-4 w-4 text-blue-600" />
           <span className="text-sm font-medium text-blue-900">{users.length} Total Users</span>
         </div>
@@ -202,8 +202,8 @@ export default function UsersPage() {
 
       {/* Search and Content */}
       <Card className="shadow-lg border-0">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-          <CardTitle className="flex items-center gap-2 text-gray-900">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-gray-900 text-lg">
             <Search className="h-5 w-5" />
             Search Users
           </CardTitle>
@@ -219,69 +219,69 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent className="p-0">
           {filteredUsers.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8 sm:py-12">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 mb-4">No users found</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
               {filteredUsers.map((user) => (
-                <div key={user._id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12">
+                <div key={user._id} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
                         <AvatarImage src={user.profilePhoto || "/placeholder.svg"} />
-                        <AvatarFallback className="bg-blue-100 text-blue-600">
+                        <AvatarFallback className="bg-blue-100 text-blue-600 text-sm sm:text-base">
                           {user.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
 
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
-                          <Badge className={getStatusColor(user.subscriptionStatus)}>{user.subscriptionStatus}</Badge>
-                          {user.isBlocked && <Badge className="bg-red-100 text-red-800 border-red-200">Blocked</Badge>}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{user.name}</h3>
+                          <Badge className={`${getStatusColor(user.subscriptionStatus)} text-xs`}>{user.subscriptionStatus}</Badge>
+                          {user.isBlocked && <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">Blocked</Badge>}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Mail className="h-4 w-4" />
-                            <span>{user.email}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-3">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                            <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                            <span className="truncate">{user.email}</span>
                           </div>
                           {user.mobile && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <Phone className="h-4 w-4" />
-                              <span>{user.mobile}</span>
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                              <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                              <span className="truncate">{user.mobile}</span>
                             </div>
                           )}
                           {user.city && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <MapPin className="h-4 w-4" />
-                              <span>{user.city}</span>
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                              <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                              <span className="truncate">{user.city}</span>
                             </div>
                           )}
                           {user.company && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <Building className="h-4 w-4" />
-                              <span>{user.company}</span>
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                              <Building className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                              <span className="truncate">{user.company}</span>
                             </div>
                           )}
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="h-4 w-4" />
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                             <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Activity className="h-4 w-4" />
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                            <Activity className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                             <span>
                               {user.contentGenerated} content, {user.imagesGenerated} images
                             </span>
                           </div>
                         </div>
 
-                        {user.bio && <p className="text-sm text-gray-600 mb-2">{user.bio}</p>}
+                        {user.bio && <p className="text-xs sm:text-sm text-gray-600 mb-2 line-clamp-2">{user.bio}</p>}
 
                         {user.subscriptionPlan && (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600">
                             <span className="font-medium">Plan:</span> {user.subscriptionPlan}
                             {user.subscriptionExpiry && (
                               <span className="ml-2">
@@ -293,29 +293,32 @@ export default function UsersPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
-                        <Edit className="h-4 w-4" />
+                    <div className="flex gap-2 lg:flex-col lg:gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEditUser(user)} className="text-xs">
+                        <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline ml-1">Edit</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleBlockUser(user._id, user.isBlocked)}
-                        className={
+                        className={`text-xs ${
                           user.isBlocked
                             ? "text-green-600 hover:text-green-700"
                             : "text-orange-600 hover:text-orange-700"
-                        }
+                        }`}
                       >
-                        {user.isBlocked ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                        {user.isBlocked ? <UserCheck className="h-3 w-3 sm:h-4 sm:w-4" /> : <UserX className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        <span className="hidden sm:inline ml-1">{user.isBlocked ? 'Unblock' : 'Block'}</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleDeleteUser(user._id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline ml-1">Delete</span>
                       </Button>
                     </div>
                   </div>

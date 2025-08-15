@@ -144,10 +144,10 @@ export default function PaymentsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Payments Management</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
+      <div className="space-y-6 sm:space-y-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Payments Management</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(4)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -163,20 +163,20 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Payments Management</h1>
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Payments Management</h1>
       </div>
 
       {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-700">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-900">{formatCurrency(analytics?.totalRevenue || 0)}</div>
+            <div className="text-xl sm:text-2xl font-bold text-green-900">{formatCurrency(analytics?.totalRevenue || 0)}</div>
             <p className={`text-xs mt-1 ${getGrowthColor(analytics?.revenueGrowth || 0)}`}>
               {getGrowthIcon(analytics?.revenueGrowth || 0)}{Math.abs(analytics?.revenueGrowth || 0)}% from last month
             </p>
@@ -189,7 +189,7 @@ export default function PaymentsPage() {
             <CreditCard className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{analytics?.totalPayments || 0}</div>
+            <div className="text-xl sm:text-2xl font-bold text-blue-900">{analytics?.totalPayments || 0}</div>
             <p className="text-xs text-blue-600 mt-1">{analytics?.successfulPayments || 0} successful</p>
           </CardContent>
         </Card>
@@ -200,7 +200,7 @@ export default function PaymentsPage() {
             <Target className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-900">{analytics?.successRate || 0}%</div>
+            <div className="text-xl sm:text-2xl font-bold text-purple-900">{analytics?.successRate || 0}%</div>
             <p className="text-xs text-purple-600 mt-1">{analytics?.failedPayments || 0} failed</p>
           </CardContent>
         </Card>
@@ -211,45 +211,45 @@ export default function PaymentsPage() {
             <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-900">{formatCurrency(analytics?.thisMonthRevenue || 0)}</div>
+            <div className="text-xl sm:text-2xl font-bold text-orange-900">{formatCurrency(analytics?.thisMonthRevenue || 0)}</div>
             <p className="text-xs text-orange-600 mt-1">{analytics?.thisMonthPayments || 0} payments</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Payment Performance Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-2 border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center text-gray-900">
+            <CardTitle className="flex items-center text-gray-900 text-lg">
               <BarChart3 className="h-5 w-5 mr-2" />
               Payment Performance Overview
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <div className="text-xl font-bold text-green-800">{analytics?.successfulPayments || 0}</div>
-                <div className="text-sm text-green-600">Successful</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-xl font-bold text-green-800">{analytics?.successfulPayments || 0}</div>
+                <div className="text-xs sm:text-sm text-green-600">Successful</div>
               </div>
               
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <div className="text-xl font-bold text-red-800">{analytics?.failedPayments || 0}</div>
-                <div className="text-sm text-red-600">Failed</div>
+              <div className="text-center p-3 sm:p-4 bg-red-50 rounded-lg">
+                <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-xl font-bold text-red-800">{analytics?.failedPayments || 0}</div>
+                <div className="text-xs sm:text-sm text-red-600">Failed</div>
               </div>
               
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <Clock className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                <div className="text-xl font-bold text-yellow-800">{analytics?.pendingPayments || 0}</div>
-                <div className="text-sm text-yellow-600">Pending</div>
+              <div className="text-center p-3 sm:p-4 bg-yellow-50 rounded-lg">
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-xl font-bold text-yellow-800">{analytics?.pendingPayments || 0}</div>
+                <div className="text-xs sm:text-sm text-yellow-600">Pending</div>
               </div>
               
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <DollarSign className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                <div className="text-xl font-bold text-blue-800">{formatCurrency(analytics?.totalDiscounts || 0)}</div>
-                <div className="text-sm text-blue-600">Discounts Given</div>
+              <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-xl font-bold text-blue-800">{formatCurrency(analytics?.totalDiscounts || 0)}</div>
+                <div className="text-xs sm:text-sm text-blue-600">Discounts Given</div>
               </div>
             </div>
           </CardContent>
@@ -258,7 +258,7 @@ export default function PaymentsPage() {
         {/* Plan Revenue Breakdown */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center text-gray-900">
+            <CardTitle className="flex items-center text-gray-900 text-lg">
               <PieChart className="h-5 w-5 mr-2" />
               Plan Revenue
             </CardTitle>
@@ -271,7 +271,7 @@ export default function PaymentsPage() {
                     <div className="font-medium text-sm">{plan.planName}</div>
                     <Badge variant="outline" className="text-xs">{plan.count}</Badge>
                   </div>
-                  <div className="text-lg font-bold text-green-600">{formatCurrency(plan.revenue)}</div>
+                  <div className="text-base sm:text-lg font-bold text-green-600">{formatCurrency(plan.revenue)}</div>
                   <div className="text-xs text-gray-600">Avg: {formatCurrency(plan.avgAmount)}</div>
                 </div>
               ))}
@@ -282,8 +282,8 @@ export default function PaymentsPage() {
 
       {/* Filters and Search */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -294,7 +294,7 @@ export default function PaymentsPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -308,36 +308,36 @@ export default function PaymentsPage() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {filteredOrders.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No orders found</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {filteredOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-blue-600" />
+                <div key={order.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 transition-colors gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                     </div>
-                    <div>
-                      <p className="font-medium">{order.userName}</p>
-                      <p className="text-sm text-gray-600">{order.userEmail}</p>
-                      <p className="text-xs text-gray-500 font-mono">{order.razorpayOrderId}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">{order.userName}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">{order.userEmail}</p>
+                      <p className="text-xs text-gray-500 font-mono truncate">{order.razorpayOrderId}</p>
                     </div>
                   </div>
 
-                  <div className="text-center">
-                    <p className="font-medium">{order.planName}</p>
+                  <div className="text-center sm:text-left">
+                    <p className="font-medium text-sm sm:text-base">{order.planName}</p>
                     <p className="text-xs text-gray-600">{order.planDuration}</p>
                     {order.couponCode && <p className="text-xs text-green-600">Coupon: {order.couponCode}</p>}
                   </div>
 
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
+                  <div className="text-center sm:text-right">
+                    <div className="flex items-center justify-center sm:justify-end gap-2">
                       <div>
-                        <p className="font-bold">{formatCurrency(order.finalAmount / 100)}</p>
+                        <p className="font-bold text-sm sm:text-base">{formatCurrency(order.finalAmount / 100)}</p>
                         {order.discountApplied > 0 && (
                           <p className="text-xs text-gray-500 line-through">{formatCurrency(order.baseAmount / 100)}</p>
                         )}

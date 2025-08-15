@@ -40,8 +40,8 @@ export default async function AdminLayout({
         <AdminSidebar />
 
         {/* Main Content */}
-        <div className="flex-1 ml-64">
-          <main className="p-8">{children}</main>
+        <div className="flex-1 lg:ml-64 transition-all duration-300">
+          <main className="p-4 sm:p-6 lg:p-8">{children}</main>
         </div>
       </div>
     </div>

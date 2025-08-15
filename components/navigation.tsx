@@ -20,6 +20,29 @@ export default function Navigation() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (isOpen && !target.closest('.mobile-menu')) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  // Function to handle navigation link clicks
+  const handleNavigationClick = () => {
+    setIsOpen(false)
+  }
+
   const navItems = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
@@ -99,36 +122,52 @@ export default function Navigation() {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-slate-800/50">
-            <div className="px-6 py-6 space-y-6">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`block transition-colors font-medium text-lg ${
-                    pathname === item.href
-                      ? "text-yellow-400"
-                      : "text-white hover:text-yellow-400"
-                  }`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-              <div className="pt-4 border-t border-slate-800/50 space-y-4">
-                <Link href="/signin" className="block">
-                  <Button variant="ghost" className="w-full text-white hover:text-yellow-400 hover:bg-slate-800/50">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/signup" className="block">
-                  <Button className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold py-2 rounded-full">
-                    Sign Up
-                  </Button>
-                </Link>
+          <>
+            {/* Mobile Overlay */}
+            <div 
+              className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            
+            {/* Mobile Menu */}
+            <div className="lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-slate-800/50 relative z-50 mobile-menu">
+              <div className="px-6 py-6 space-y-6">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`block transition-colors font-medium text-lg ${
+                      pathname === item.href
+                        ? "text-yellow-400"
+                        : "text-white hover:text-yellow-400"
+                    }`}
+                    onClick={handleNavigationClick}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+                <div className="pt-4 border-t border-slate-800/50 space-y-4">
+                  <Link href="/signin" className="block">
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-white hover:text-yellow-400 hover:bg-slate-800/50"
+                      onClick={handleNavigationClick}
+                    >
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/signup" className="block">
+                    <Button 
+                      className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold py-2 rounded-full"
+                      onClick={handleNavigationClick}
+                    >
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </nav>
     </>

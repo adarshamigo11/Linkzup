@@ -105,22 +105,16 @@ export default function PlansPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Check plan limits
-    if (!editingPlan && plans.length >= 3) {
-      toast.error("Maximum 3 plans allowed. Please delete an existing plan first.")
-      return
-    }
-
+    
     try {
       const planData = {
         ...formData,
-        price: Number.parseInt(formData.price),
-        originalPrice: formData.originalPrice ? Number.parseInt(formData.originalPrice) : undefined,
-        durationDays: Number.parseInt(formData.durationDays),
-        features: formData.features.split("\n").filter((f) => f.trim()),
-        imageLimit: Number.parseInt(formData.imageLimit),
-        contentLimit: formData.contentLimit === "-1" ? -1 : Number.parseInt(formData.contentLimit),
+        price: parseFloat(formData.price),
+        originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
+        durationDays: parseInt(formData.durationDays),
+        imageLimit: parseInt(formData.imageLimit),
+        contentLimit: parseInt(formData.contentLimit),
+        features: formData.features.split('\n').filter(f => f.trim()),
       }
 
       const url = editingPlan ? `/api/plans/${editingPlan.id}` : "/api/plans"
@@ -128,33 +122,28 @@ export default function PlansPage() {
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(planData),
       })
 
       if (response.ok) {
         toast.success(editingPlan ? "Plan updated successfully" : "Plan created successfully")
-        fetchPlans()
-        resetForm()
         setIsCreateModalOpen(false)
-        setEditingPlan(null)
+        resetForm()
+        fetchPlans()
       } else {
         const error = await response.json()
         toast.error(error.message || "Failed to save plan")
       }
     } catch (error) {
-      console.error("Failed to save plan:", error)
+      console.error("Save plan error:", error)
       toast.error("Failed to save plan")
     }
   }
 
   const handleDelete = async (planId: string) => {
-    // Check minimum plan requirement
-    if (plans.length <= 1) {
-      toast.error("Minimum 1 plan required. Cannot delete the last plan.")
-      return
-    }
-
     try {
       const response = await fetch(`/api/plans/${planId}`, {
         method: "DELETE",
@@ -164,36 +153,38 @@ export default function PlansPage() {
         toast.success("Plan deleted successfully")
         fetchPlans()
       } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to delete plan")
+        toast.error("Failed to delete plan")
       }
     } catch (error) {
-      console.error("Failed to delete plan:", error)
+      console.error("Delete plan error:", error)
       toast.error("Failed to delete plan")
     }
   }
 
-  const togglePlanStatus = async (planId: string, isActive: boolean) => {
+  const togglePlanStatus = async (planId: string, currentStatus: boolean) => {
     try {
       const response = await fetch(`/api/plans/${planId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !isActive }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive: !currentStatus }),
       })
 
       if (response.ok) {
-        toast.success(`Plan ${!isActive ? "activated" : "deactivated"} successfully`)
+        toast.success(`Plan ${!currentStatus ? "activated" : "deactivated"} successfully`)
         fetchPlans()
       } else {
         toast.error("Failed to update plan status")
       }
     } catch (error) {
-      console.error("Failed to update plan status:", error)
+      console.error("Toggle plan status error:", error)
       toast.error("Failed to update plan status")
     }
   }
 
   const resetForm = () => {
+    setEditingPlan(null)
     setFormData({
       name: "",
       slug: "",
@@ -240,13 +231,13 @@ export default function PlansPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Plan Management</h1>
-          <p className="text-gray-600 mt-2">Loading plans...</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Plan Management</h1>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Loading plans...</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[...Array(3)].map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-full"></div>
@@ -259,23 +250,23 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Plan Management</h1>
-          <p className="text-gray-600 mt-2">Manage subscription plans and pricing</p>
-          <div className="flex items-center gap-4 mt-2">
-            <Badge variant="outline" className="text-sm">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Plan Management</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage subscription plans and pricing</p>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2">
+            <Badge variant="outline" className="text-xs sm:text-sm">
               {plans.length}/3 Plans
             </Badge>
             {plans.length >= 3 && (
-              <Badge variant="destructive" className="text-sm">
+              <Badge variant="destructive" className="text-xs sm:text-sm">
                 Maximum limit reached
               </Badge>
             )}
             {plans.length <= 1 && (
-              <Badge variant="destructive" className="text-sm">
+              <Badge variant="destructive" className="text-xs sm:text-sm">
                 Minimum 1 plan required
               </Badge>
             )}
@@ -287,6 +278,7 @@ export default function PlansPage() {
               onClick={resetForm} 
               disabled={plans.length >= 3}
               title={plans.length >= 3 ? "Maximum 3 plans reached. Delete a plan first." : "Create new plan"}
+              className="text-sm"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Plan
@@ -297,120 +289,125 @@ export default function PlansPage() {
               <DialogTitle>{editingPlan ? "Edit Plan" : "Create New Plan"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="name">Plan Name</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g., Basic Plan"
                     required
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="slug">Slug</Label>
                   <Input
                     id="slug"
                     value={formData.slug}
                     onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                    placeholder="e.g., basic-plan"
                     required
                   />
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe the plan features and benefits..."
+                  rows={3}
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="price">Price (₹)</Label>
                   <Input
                     id="price"
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="999"
+                    min="0"
+                    step="0.01"
                     required
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="originalPrice">Original Price (₹)</Label>
                   <Input
                     id="originalPrice"
                     type="number"
                     value={formData.originalPrice}
                     onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+                    placeholder="1499"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="durationDays">Duration (Days)</Label>
                   <Input
                     id="durationDays"
                     type="number"
                     value={formData.durationDays}
                     onChange={(e) => setFormData({ ...formData, durationDays: e.target.value })}
+                    placeholder="30"
+                    min="1"
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="imageLimit">Image Limit</Label>
                   <Input
                     id="imageLimit"
                     type="number"
                     value={formData.imageLimit}
                     onChange={(e) => setFormData({ ...formData, imageLimit: e.target.value })}
+                    placeholder="100"
+                    min="0"
                     required
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="contentLimit">Content Limit (-1 for unlimited)</Label>
                   <Input
                     id="contentLimit"
                     type="number"
                     value={formData.contentLimit}
                     onChange={(e) => setFormData({ ...formData, contentLimit: e.target.value })}
+                    placeholder="1000"
+                    min="-1"
                     required
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="features">Features (one per line)</Label>
-                <Textarea
-                  id="features"
-                  value={formData.features}
-                  onChange={(e) => setFormData({ ...formData, features: e.target.value })}
-                  placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="badge">Badge (optional)</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="badge">Badge Text</Label>
                   <Input
                     id="badge"
                     value={formData.badge}
                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
-                    placeholder="Most Popular"
+                    placeholder="e.g., Popular, Best Value"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="icon">Icon</Label>
                   <select
                     id="icon"
                     value={formData.icon}
                     onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {iconOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -419,21 +416,34 @@ export default function PlansPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <Label htmlFor="color">Color</Label>
-                  <select
-                    id="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  >
-                    {colorOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="color">Color Theme</Label>
+                <select
+                  id="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {colorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="features">Features (one per line)</Label>
+                <Textarea
+                  id="features"
+                  value={formData.features}
+                  onChange={(e) => setFormData({ ...formData, features: e.target.value })}
+                  placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
+                  rows={4}
+                  required
+                />
               </div>
 
               <div className="flex items-center space-x-2">
@@ -445,19 +455,13 @@ export default function PlansPage() {
                 <Label htmlFor="isActive">Active Plan</Label>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateModalOpen(false)
-                    setEditingPlan(null)
-                    resetForm()
-                  }}
-                >
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">{editingPlan ? "Update Plan" : "Create Plan"}</Button>
+                <Button type="submit">
+                  {editingPlan ? "Update Plan" : "Create Plan"}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -465,48 +469,36 @@ export default function PlansPage() {
       </div>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {plans.map((plan) => {
           const IconComponent = getIconComponent(plan.icon || "Star")
           return (
-            <Card key={plan.id || plan.slug} className={`relative ${!plan.isActive ? "opacity-60" : ""}`}>
-              <CardHeader>
+            <Card key={plan.id} className={`relative ${!plan.isActive ? 'opacity-60' : ''}`}>
+              <CardHeader className={`bg-gradient-to-r ${plan.color} text-white pb-4`}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 bg-gradient-to-r ${plan.color} rounded-lg flex items-center justify-center text-white`}
-                    >
-                      <IconComponent className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{plan.name}</CardTitle>
-                      <p className="text-sm text-gray-600">{plan.slug}</p>
-                    </div>
-                  </div>
                   <div className="flex items-center gap-2">
-                    {plan.badge && (
-                      <Badge variant="secondary" className="text-xs">
-                        {plan.badge}
-                      </Badge>
-                    )}
-                    <Badge variant={plan.isActive ? "default" : "secondary"}>
-                      {plan.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    <IconComponent className="h-5 w-5" />
+                    <CardTitle className="text-lg">{plan.name}</CardTitle>
                   </div>
+                  {plan.badge && (
+                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                      {plan.badge}
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-3xl font-bold text-gray-900">₹{plan.price}</div>
+              <CardContent className="p-4 sm:p-6">
+                <div className="mb-4">
+                  <div className="text-2xl sm:text-3xl font-bold text-gray-900">₹{plan.price}</div>
                   {plan.originalPrice && (
                     <div className="text-sm text-gray-500 line-through">₹{plan.originalPrice}</div>
                   )}
                   <div className="text-sm text-gray-600">{plan.durationDays} days</div>
                 </div>
 
-                <p className="text-gray-600 text-sm">{plan.description}</p>
+                <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
 
-                <div className="space-y-2">
+                <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
                     <span>Image Limit:</span>
                     <span className="font-medium">{plan.imageLimit}</span>
@@ -517,13 +509,13 @@ export default function PlansPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 mb-4">
                   <p className="text-sm font-medium text-gray-700">Features:</p>
                   <ul className="text-xs text-gray-600 space-y-1">
                     {plan.features.slice(0, 3).map((feature, index) => (
                       <li key={feature + index} className="flex items-center gap-2">
                         <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                        {feature}
+                        <span className="truncate">{feature}</span>
                       </li>
                     ))}
                     {plan.features.length > 3 && <li className="text-gray-500">+{plan.features.length - 3} more</li>}
@@ -531,12 +523,12 @@ export default function PlansPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => togglePlanStatus(plan.id, plan.isActive)}>
-                      {plan.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Button size="sm" variant="outline" onClick={() => togglePlanStatus(plan.id, plan.isActive)} className="text-xs">
+                      {plan.isActive ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(plan)}>
-                      <Edit className="h-4 w-4" />
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(plan)} className="text-xs">
+                      <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                   <AlertDialog>
@@ -544,11 +536,11 @@ export default function PlansPage() {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="text-red-600 hover:text-red-700 bg-transparent"
+                        className="text-red-600 hover:text-red-700 bg-transparent text-xs"
                         disabled={plans.length <= 1}
                         title={plans.length <= 1 ? "Cannot delete the last plan" : "Delete plan"}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -577,17 +569,17 @@ export default function PlansPage() {
       </div>
 
       {plans.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CreditCard className="h-8 w-8 text-gray-400" />
+        <div className="text-center py-8 sm:py-12">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Plans Found</h3>
-          <p className="text-gray-600 mb-4">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No Plans Found</h3>
+          <p className="text-gray-600 mb-4 text-sm sm:text-base">
             Create your first subscription plan to get started. 
             <br />
-            <span className="text-sm text-gray-500">Minimum 1 plan required, maximum 3 plans allowed.</span>
+            <span className="text-xs sm:text-sm text-gray-500">Minimum 1 plan required, maximum 3 plans allowed.</span>
           </p>
-          <Button onClick={() => setIsCreateModalOpen(true)}>
+          <Button onClick={() => setIsCreateModalOpen(true)} className="text-sm">
             <Plus className="h-4 w-4 mr-2" />
             Create Plan
           </Button>
