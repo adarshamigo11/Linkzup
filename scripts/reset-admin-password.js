@@ -1,4 +1,4 @@
-// Usage: node scripts/create-admin-user.js
+// Usage: node scripts/reset-admin-password.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
@@ -53,50 +53,40 @@ const adminSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Pre-save middleware to hash password
-adminSchema.pre('save', async function(next) {
-  if (this.isModified('password')) {
-    try {
-      const salt = await bcrypt.genSalt(10);
-      this.password = await bcrypt.hash(this.password, salt);
-    } catch (err) {
-      return next(err);
-    }
-  }
-  next();
-});
-
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
-// Create admin user
-const createAdminUser = async () => {
+// Reset admin password
+const resetAdminPassword = async () => {
   try {
     await connectDB();
 
-    // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email: 'admin@zuperstudio.com' });
+    // Find the admin user
+    const admin = await Admin.findOne({ email: 'admin@zuperstudio.com' });
     
-    if (existingAdmin) {
-      console.log('Admin user already exists:', existingAdmin.email);
-      console.log('To reset password, delete the admin and run this script again.');
-      return;
+    if (!admin) {
+      console.log('Admin user not found. Creating new admin...');
+      const newAdmin = new Admin({
+        name: 'Admin User',
+        email: 'admin@zuperstudio.com',
+        password: 'admin123@1',
+        role: 'super_admin',
+        isActive: true,
+      });
+      await newAdmin.save();
+      console.log('New admin user created successfully:', newAdmin.email);
+      console.log('Password: admin123@1');
+    } else {
+      // Reset password
+      const newPassword = 'admin123@1';
+      const salt = await bcrypt.genSalt(10);
+      admin.password = await bcrypt.hash(newPassword, salt);
+      await admin.save();
+      console.log('Admin password reset successfully:', admin.email);
+      console.log('New Password: admin123@1');
     }
-
-    // Create new admin user
-    const adminUser = new Admin({
-      name: 'Admin User',
-      email: 'admin@zuperstudio.com',
-      password: 'admin123@1', // This will be hashed automatically
-      role: 'super_admin',
-      isActive: true,
-    });
-
-    await adminUser.save();
-    console.log('Admin user created successfully:', adminUser.email);
-    console.log('Password: admin123@1');
     
   } catch (error) {
-    console.error('Error creating admin user:', error);
+    console.error('Error resetting admin password:', error);
   } finally {
     await mongoose.disconnect();
     console.log('MongoDB disconnected');
@@ -104,4 +94,4 @@ const createAdminUser = async () => {
 };
 
 // Run the script
-createAdminUser();
+resetAdminPassword();
