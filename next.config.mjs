@@ -12,7 +12,9 @@ const nextConfig = {
   },
   experimental: {
     // Enable server actions
-    serverActions: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'localhost:3001'],
+    },
   },
   // Handle environment variables during build
   env: {
