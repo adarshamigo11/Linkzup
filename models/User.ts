@@ -5,6 +5,8 @@ export interface IUser extends Document {
   _id: string
   name: string
   email: string
+  mobile: string // New field for mobile number
+  city: string // New field for city
   password?: string
   image?: string
   emailVerified?: Date
@@ -19,11 +21,13 @@ export interface IUser extends Document {
   location?: string
   website?: string
   profilePhoto?: string
-  blocked?: boolean;
+  blocked?: boolean
+  role?: "user" | "admin" // Added role field for admin access
 
   // Onboarding
   isOnboarded: boolean
   onboardingStep?: number
+  onboardingCompleted: boolean // New field for onboarding completion status
 
   // Content preferences
   contentStyle?: string
@@ -51,9 +55,12 @@ export interface IUser extends Document {
   // Subscription
   subscriptionStatus?: string
   subscriptionPlan?: string
+  subscriptionStartDate?: Date // New field for subscription start date
   subscriptionExpiry?: Date
   razorpayCustomerId?: string
   razorpaySubscriptionId?: string
+  autoRenew?: boolean // New field for auto-renewal status
+  currentPlanId?: string // Added current plan ID reference
 
   // Usage tracking
   contentGenerated?: number
@@ -81,10 +88,21 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
     },
+    mobile: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    city: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     password: {
       type: String,
       select: false, // Don't include password in queries by default
       minlength: 6,
+      required: true,
     },
     image: {
       type: String,
@@ -125,6 +143,11 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
 
     // Onboarding
     isOnboarded: {
@@ -134,6 +157,10 @@ const UserSchema = new Schema<IUser>(
     onboardingStep: {
       type: Number,
       default: 0,
+    },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false,
     },
 
     // Content preferences
@@ -191,13 +218,15 @@ const UserSchema = new Schema<IUser>(
     // Subscription
     subscriptionStatus: {
       type: String,
-      enum: ["free", "active", "cancelled", "expired", "past_due"],
+      enum: ["free", "active", "expired", "cancelled"],
       default: "free",
     },
     subscriptionPlan: {
       type: String,
-      enum: ["free", "zuper15", "zuper30", "zuper360"],
       default: "free",
+    },
+    subscriptionStartDate: {
+      type: Date,
     },
     subscriptionExpiry: {
       type: Date,
@@ -206,6 +235,13 @@ const UserSchema = new Schema<IUser>(
       type: String,
     },
     razorpaySubscriptionId: {
+      type: String,
+    },
+    autoRenew: {
+      type: Boolean,
+      default: false,
+    },
+    currentPlanId: {
       type: String,
     },
 
@@ -262,6 +298,7 @@ UserSchema.index({ lastActiveAt: -1 })
 UserSchema.index({ "linkedinProfile.id": 1 })
 UserSchema.index({ subscriptionStatus: 1 })
 UserSchema.index({ subscriptionExpiry: 1 })
+UserSchema.index({ mobile: 1 }) // New index for mobile
 
 // Pre-save middleware to hash password if modified
 UserSchema.pre("save", async function (next) {
@@ -289,9 +326,9 @@ UserSchema.methods.isLinkedInTokenValid = function () {
 
 // Instance method to check if subscription is active
 UserSchema.methods.hasActiveSubscription = function () {
-  return this.subscriptionStatus === "active" && 
-         this.subscriptionExpiry && 
-         new Date(this.subscriptionExpiry) > new Date()
+  return (
+    this.subscriptionStatus === "active" && this.subscriptionExpiry && new Date(this.subscriptionExpiry) > new Date()
+  )
 }
 
 // Instance method to get remaining image generations
@@ -299,16 +336,16 @@ UserSchema.methods.getRemainingImageGenerations = function () {
   const plans = {
     zuper15: 7,
     zuper30: 15,
-    zuper360: 300
+    zuper360: 300,
   }
-  
+
   const limit = plans[this.subscriptionPlan as keyof typeof plans] || 0
   const used = this.imagesGenerated || 0
-  
+
   return {
     limit,
     used,
-    remaining: Math.max(0, limit - used)
+    remaining: Math.max(0, limit - used),
   }
 }
 
@@ -330,6 +367,18 @@ UserSchema.methods.getLinkedInSummary = function () {
 // Method to compare password
 UserSchema.methods.comparePassword = async function (candidatePassword: string) {
   return bcrypt.compare(candidatePassword, this.password)
+}
+
+UserSchema.methods.canAccessPremiumFeatures = function () {
+  return this.hasActiveSubscription() && this.subscriptionStatus === "active"
+}
+
+UserSchema.methods.canGenerateContent = function () {
+  if (!this.canAccessPremiumFeatures()) return false
+
+  // Check if user has reached content limit for their plan
+  // This would need to be implemented based on plan limits
+  return true
 }
 
 export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema)
